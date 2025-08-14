@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Dashboard Mavenclad — HTML offline</title>
+
+<!-- Bootstrap -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+<!-- Plotly -->
+<script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+<!-- SheetJS para Excel -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+<style>
+  body { margin-top: 80px; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
+  h1 { text-align:center; margin: 30px 0; }
+  h3 { margin-top: 40px; padding-bottom: 8px; border-bottom: 2px solid #eee; }
+  .graph-section { margin-bottom: 40px; }
+  .sticky-inputs { position: sticky; top: 72px; z-index: 1020; background: #f8f9fa; border: 1px solid #e9ecef; border-radius: .5rem; padding: 1rem; }
+  .price-input { text-align:right; }
+  .badge-pill { border-radius: 999px; }
+  .small-note { font-size: .9rem; color: #6c757d; }
+  .linklike { cursor: pointer; }
+  .card-nav:hover { transform: translateY(-2px); transition: .15s ease; }
+  .section-top { display:flex; gap:.5rem; flex-wrap:wrap; margin-bottom:.75rem; }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary fixed-top shadow">
+  <div class="container-fluid">
+    <a class="navbar-brand" href="#">Calculadora Mavenclad</a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMain">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div id="navMain" class="collapse navbar-collapse">
+      <ul class="navbar-nav me-auto">
+        <li class="nav-item"><a class="nav-link" href="#precios">💵 Precio</a></li>
+        <li class="nav-item"><a class="nav-link" href="#costos">💰 Costo</a></li>
+        <li class="nav-item"><a class="nav-link" href="#desglose">🧩 Desglose</a></li>
+        <li class="nav-item"><a class="nav-link" href="#acumulado">📈 Acumulado</a></li>
+        <li class="nav-item"><a class="nav-link" href="#ahorro">📉 Ahorro</a></li>
+        <li class="nav-item"><a class="nav-link" href="#anexo">📎 Anexo</a></li>
+        <li class="nav-item"><a class="nav-link" href="#conclusion">🎯 Conclusión</a></li>
+      </ul>
+    </div>
+  </div>
+</nav>
+
+<div class="container">
+
+  <h1>📊 Calculadora Mavenclad</h1>
+  <p class="lead text-center">Herramienta para evaluar precios, costos acumulados, ahorros y carga operativa de las DMTs para EM.</p>
+
+  <!-- Quick nav cards -->
+  <div class="row text-center mt-4 mb-2">
+    <div class="col-md-2 offset-md-1">
+      <a href="#precios" class="text-decoration-none">
+        <div class="card card-nav shadow-sm p-3">
+          <div style="font-size:2em">💵</div><strong>Precios</strong>
+        </div>
+      </a>
+    </div>
+    <div class="col-md-2">
+      <a href="#costos" class="text-decoration-none">
+        <div class="card card-nav shadow-sm p-3">
+          <div style="font-size:2em">💰</div><strong>Costos</strong>
+        </div>
+      </a>
+    </div>
+    <div class="col-md-2">
+      <a href="#acumulado" class="text-decoration-none">
+        <div class="card card-nav shadow-sm p-3">
+          <div style="font-size:2em">📈</div><strong>Acumulado</strong>
+        </div>
+      </a>
+    </div>
+    <div class="col-md-2">
+      <a href="#ahorro" class="text-decoration-none">
+        <div class="card card-nav shadow-sm p-3">
+          <div style="font-size:2em">📉</div><strong>Ahorro</strong>
+        </div>
+      </a>
+    </div>
+    <div class="col-md-2">
+      <a href="#anexo" class="text-decoration-none">
+        <div class="card card-nav shadow-sm p-3">
+          <div style="font-size:2em">📎</div><strong>Anexo</strong>
+        </div>
+      </a>
+    </div>
+  </div>
+
+  <!-- ====== SECCIÓN PRECIOS ====== -->
+  <div id="precios" class="graph-section">
+    <div class="section-top">
+      <h3 class="m-0">💵 Comparativo: Precio anual vs acumulado</h3>
+      <a href="#top" class="btn btn-outline-primary btn-sm">🔝 Arriba</a>
+    </div>
+    <p class="small-note">Ingresa el <strong>precio unitario</strong> por molécula. Se calcula:
+      Año 1 = unitario × frecuencia; Año 2 = 2×Año1; Año 3 = 3×Año1; Año 4 = 4×Año1. 
+      <span class="badge text-bg-warning">Cladribina y Alemtuzumab: solo Años 1 y 2</span>
+    </p>
+
+    <!-- Inputs precios -->
+    <div class="sticky-inputs mb-3">
+      <div class="row g-2">
+        <!-- Inputs generados por JS -->
+        <div id="inputs-precio" class="col-12"></div>
+      </div>
+      <div class="d-flex gap-2 mt-2">
+        <button class="btn btn-success" onclick="recalcularTodo()">Actualizar gráficos</button>
+        <span class="small-note">Frecuencias (anuales): 
+          <span class="badge rounded-pill text-bg-light">Cladribina 12</span>
+          <span class="badge rounded-pill text-bg-light">Dimetilfumarato 13</span>
+          <span class="badge rounded-pill text-bg-light">Fingolimod 13</span>
+          <span class="badge rounded-pill text-bg-light">Alemtuzumab 5</span>
+          <span class="badge rounded-pill text-bg-light">Teriflunomida 13</span>
+          <span class="badge rounded-pill text-bg-light">Natalizumab 12</span>
+          <span class="badge rounded-pill text-bg-light">Ocrelizumab 2</span>
+          <span class="badge rounded-pill text-bg-light">Ofatumumab 14</span>
+        </span>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="col-lg-6"><div id="fig-precio-anual"></div></div>
+      <div class="col-lg-6"><div id="fig-precio-acumulado"></div></div>
+    </div>
+  </div>
+
+  <!-- ====== SECCIÓN COSTO TOTAL ANUAL ====== -->
+  <div id="costos" class="graph-section">
+    <div class="section-top">
+      <h3 class="m-0">💰 Costo total anual por molécula</h3>
+      <a class="btn btn-outline-primary btn-sm" href="#precios">⬅️ Volver a Precios</a>
+      <button class="btn btn-secondary btn-sm" onclick="abrirCostosDesglosados()">📄 Ver costos desglosados</button>
+      <button class="btn btn-outline-success btn-sm" onclick="descargarExcel()">⬇️ Descargar Excel (costos & precios)</button>
+    </div>
+    <p class="small-note">Incluye <strong>Precio</strong> (calculado con tus unitarios) + <strong>Costos adicionales</strong> (promedio distribuido por años activos).</p>
+    <div id="fig-costo-total"></div>
+  </div>
+
+  <!-- ====== SECCIÓN DESGLOSE ====== -->
+  <div id="desglose" class="graph-section">
+    <div class="section-top">
+      <h3 class="m-0">🧩 Desglose por costos (Precio vs Costos adicionales)</h3>
+      <a class="btn btn-outline-primary btn-sm" href="#precios">⬅️ Volver a Precios</a>
+    </div>
+    <p class="small-note">Comparación por molécula y año. Usa el precio que ingresaste y los costos adicionales promediados por año activo.</p>
+    <div id="fig-desglose"></div>
+  </div>
+
+  <!-- ====== SECCIÓN ACUMULADO ====== -->
+  <div id="acumulado" class="graph-section">
+    <div class="section-top">
+      <h3 class="m-0">📈 Costo total acumulado año a año</h3>
+      <a class="btn btn-outline-primary btn-sm" href="#precios">⬅️ Volver a Precios</a>
+    </div>
+    <div id="fig-acumulado"></div>
+  </div>
+
+  <!-- ====== SECCIÓN AHORRO ====== -->
+  <div id="ahorro" class="graph-section">
+    <div class="section-top">
+      <h3 class="m-0">📉 Ahorro acumulado vs Cladribina</h3>
+      <a class="btn btn-outline-primary btn-sm" href="#precios">⬅️ Volver a Precios</a>
+    </div>
+    <p class="small-note">Ahorro calculado como (Costo acumulado competidor − Costo acumulado Cladribina). Vista en burbujas y en barras.</p>
+    <div class="row">
+      <div class="col-lg-6"><div id="fig-ahorro-burbujas"></div></div>
+      <div class="col-lg-6"><div id="fig-ahorro-barras"></div></div>
+    </div>
+  </div>
+
+  <!-- ====== SECCIÓN ANEXO CARGA ASISTENCIAL ====== -->
+  <div id="anexo" class="graph-section">
+    <div class="section-top">
+      <h3 class="m-0">📎 Anexo – Carga asistencial promedio (4 años)</h3>
+      <a class="btn btn-outline-primary btn-sm" href="#precios">⬅️ Volver a Precios</a>
+    </div>
+    <p class="small-note">Promedio de horas de <em>Clinic</em>, <em>Lab</em>, <em>Pharmacy</em>, <em>Administration</em> en Kuwait, Bahréin y Qatar. Para moléculas sin datos en un país, el promedio se calcula sobre los países disponibles.</p>
+    <div class="table-responsive mb-3">
+      <table id="tabla-anexo" class="table table-sm table-striped"></table>
+    </div>
+    <div id="fig-anexo"></div>
+    <small>Fuente: Póster ECTRIMS 2024 – HCP Time requirements to administer heDMTs. Promedios calculados sobre datos reportados.</small>
+  </div>
+
+  <!-- ====== SECCIÓN CONCLUSIÓN ====== -->
+  <div id="conclusion" class="graph-section">
+    <div class="section-top">
+      <h3 class="m-0">🎯 Conclusión ejecutiva para EPS e IPS</h3>
+      <a class="btn btn-outline-primary btn-sm" href="#precios">⬅️ Volver a Precios</a>
+    </div>
+    <div class="alert alert-primary">
+      <p><strong>Cladribina</strong> destaca por su esquema corto y baja carga operativa, con impactos positivos para el sistema:</p>
+      <ul class="mb-2">
+        <li>✅ <strong>Suministro y continuidad:</strong> Menor variabilidad operativa facilita la planeación y disponibilidad.</li>
+        <li>🤝 <strong>Espacio para acuerdos:</strong> El perfil permite diseñar esquemas de acceso flexibles con EPS.</li>
+        <li>🏥 <strong>Menor carga para IPS:</strong> Tiempo de administración y monitoreo sustancialmente menor vs agentes de infusión.</li>
+      </ul>
+      <p class="mb-0">Por su perfil clínico-operativo y financiero, es una alternativa eficaz y predecible para optimizar recursos.</p>
+    </div>
+  </div>
+
+</div> <!-- /container -->
+
+<!-- ====== MODAL COSTOS DESGLOSADOS (pantalla completa) ====== -->
+<div class="modal fade" id="modalCostos" tabindex="-1">
+  <div class="modal-dialog modal-fullscreen">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Costos detallados (descargables)</h5>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <div class="small-note">Molecula – Concepto – Código SOAT – Precio unitario – Cantidad</div>
+          <button class="btn btn-outline-success btn-sm" onclick="descargarExcel()">⬇️ Descargar Excel</button>
+        </div>
+        <div class="table-responsive">
+          <table id="tabla-costos" class="table table-sm table-striped"></table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+/* ==========================
+   DATOS BASE
+========================== */
+// Moléculas y colores
+const MOLECULAS = [
+  "Cladribina","Dimetilfumarato","Fingolimod","Alemtuzumab",
+  "Teriflunomida","Natalizumab","Ocrelizumab","Ofatumumab"
+];
+const coloresMerck = ["#EB3C96","#2DBECD","#B4DC96","#503291","#FFDCB9","#FFA500","#00FFFF","#00FF00"];
+
+// Frecuencias anuales
+const FRECUENCIAS = {
+  "Cladribina": 12,
+  "Dimetilfumarato": 13,
+  "Fingolimod": 13,
+  "Alemtuzumab": 5,
+  "Teriflunomida": 13,
+  "Natalizumab": 12,
+  "Ocrelizumab": 2,
+  "Ofatumumab": 14,
+};
+
+// Años activos (Cladribina y Alemtuzumab: 2 años; resto 4)
+const ANIOS_ACTIVOS = {
+  "Cladribina": 2,
+  "Alemtuzumab": 2,
+  "Dimetilfumarato": 4,
+  "Fingolimod": 4,
+  "Teriflunomida": 4,
+  "Natalizumab": 4,
+  "Ocrelizumab": 4,
+  "Ofatumumab": 4
+};
+
+// Precios unitarios iniciales (COP)
+const PRECIOS_UNITARIOS_INICIALES = {
+  "Cladribina": 9000000,
+  "Dimetilfumarato": 3858011,
+  "Fingolimod": 4571166,
+  "Alemtuzumab": 25630840,
+  "Teriflunomida": 3250253,
+  "Natalizumab": 5410970,
+  "Ocrelizumab": 18266453,
+  "Ofatumumab": 3683000
+};
+
+// Costos desglosados (solo filas con precio numérico)
+const COSTOS_DETALLADOS = [
+  // Alemtuzumab
+  ["Alemtuzumab","Hemograma (sangre)","SOAT-9304",39400,31],
+  ["Alemtuzumab","Orina simple","SOAT- 19775",25100,13],
+  ["Alemtuzumab","Tuberculosis (TB)","SOAT - XX",110800,1],
+  ["Alemtuzumab","Resonancia magnética","SOAT-31302",3263100,1],
+  ["Alemtuzumab","Reacción infusión","SOAT - 36101",38900,1],
+  // Cladribina
+  ["Cladribina","HBV (Hepatitis B)","SOAT - 19551",171300,1],
+  ["Cladribina","HCV (Hepatitis C)","SOAT - 19559",192600,1],
+  ["Cladribina","Tuberculosis (TB)","SOAT - XX",110800,1],
+  ["Cladribina","Hemograma (sangre)","SOAT-9304",39400,4],
+  // Dimetilfumarato
+  ["Dimetilfumarato","Hemograma (sangre)","SOAT-9304",39400,6],
+  ["Dimetilfumarato","Orina simple","SOAT- 19775",25100,3],
+  ["Dimetilfumarato","Resonancia magnética","SOAT-31302",3263100,1],
+  ["Dimetilfumarato","Orina simple","SOAT- 19775",25100,1],
+  ["Dimetilfumarato","Hemograma (sangre)","SOAT-9304",39400,3],
+  // Fingolimod
+  ["Fingolimod","Cardiovascular","SOAT-25102",77800,1],
+  ["Fingolimod","Hemograma (sangre)","SOAT-9304",39400,4],
+  ["Fingolimod","Oftalmología","CUPS-852205",80200,1],
+  ["Fingolimod","Hemograma (sangre)","SOAT-9304",39400,2],
+  ["Fingolimod","Cardiovascular","SOAT-25102",77800,1],
+  // Natalizumab
+  ["Natalizumab","Resonancia magnética","SOAT-31302",3263100,1],
+  ["Natalizumab","Hemograma (sangre)","SOAT-9304",39400,1],
+  ["Natalizumab","Hemograma (sangre)","SOAT-9304",39400,3],
+  ["Natalizumab","Resonancia magnética","SOAT-31302",3263100,1],
+  ["Natalizumab","Reacción infusión","SOAT - 36101",38900,1],
+  // Ocrelizumab
+  ["Ocrelizumab","HBV (Hepatitis B)","SOAT - 19551",171300,1],
+  ["Ocrelizumab","Hemograma (sangre)","SOAT-9304",39400,3],
+  ["Ocrelizumab","Reacción infusión","SOAT - 36101",38900,1],
+  // Ofatumumab
+  ["Ofatumumab","Aplicación anticuerpo SC","SOAT - 992102",100000,12],
+  ["Ofatumumab","Consulta especializada","SOAT - 890201",250000,12],
+  ["Ofatumumab","Examenes de laboratorio","SOAT-9304",39400,4],
+  // Teriflunomida
+  ["Teriflunomida","Hemograma (sangre)","SOAT-9304",39400,2],
+  ["Teriflunomida","Hemograma (sangre)","SOAT-9304",39400,24],
+];
+
+// Anexo carga asistencial (Kuwait-Bahréin-Qatar) — promediaremos por molécula y categoría
+const CATS = ["Clinic","Lab","Pharmacy","Administration"];
+const KUWAIT = {
+  "Natalizumab": {"Clinic":3.0,"Lab":2.7,"Pharmacy":26.0,"Administration":52.0},
+  "Alemtuzumab": {"Clinic":3.0,"Lab":8.0,"Pharmacy":1.0,"Administration":48.0},
+  "Ocrelizumab": {"Clinic":3.0,"Lab":1.3,"Pharmacy":4.5,"Administration":36.0},
+  "Ofatumumab": {"Clinic":3.0,"Lab":2.7,"Pharmacy":24.0,"Administration":0.0},
+  "Fingolimod": {"Clinic":3.0,"Lab":5.7,"Pharmacy":12.0,"Administration":0.0},
+  "DMF": {"Clinic":3.0,"Lab":6.0,"Pharmacy":12.0,"Administration":0.0},
+  "CladT": {"Clinic":3.0,"Lab":1.7,"Pharmacy":1.0,"Administration":0.0}
+};
+const BAHRAIN = {
+  "Alemtuzumab": {"Clinic":8.0,"Lab":12.0,"Pharmacy":2.0,"Administration":56.0},
+  "Natalizumab": {"Clinic":3.3,"Lab":4.0,"Pharmacy":13.0,"Administration":52.0},
+  "Ocrelizumab": {"Clinic":3.3,"Lab":2.5,"Pharmacy":2.3,"Administration":36.0},
+  "Fingolimod": {"Clinic":6.7,"Lab":5.0,"Pharmacy":13.0,"Administration":0.0},
+  "Ofatumumab": {"Clinic":3.3,"Lab":2.5,"Pharmacy":12.0,"Administration":0.0},
+  "CladT": {"Clinic":3.3,"Lab":1.5,"Pharmacy":1.0,"Administration":0.0}
+};
+const QATAR = {
+  "Natalizumab": {"Clinic":2.0,"Lab":4.0,"Pharmacy":26.0,"Administration":52.0},
+  "Alemtuzumab": {"Clinic":2.0,"Lab":12.0,"Pharmacy":0.0,"Administration":56.0},
+  "Ocrelizumab": {"Clinic":2.0,"Lab":2.0,"Pharmacy":4.5,"Administration":37.0},
+  "Fingolimod": {"Clinic":2.0,"Lab":5.0,"Pharmacy":10.0,"Administration":0.0},
+  "DMF": {"Clinic":2.0,"Lab":4.0,"Pharmacy":10.0,"Administration":0.0},
+  "CladT": {"Clinic":2.0,"Lab":2.3,"Pharmacy":2.0,"Administration":0.0}
+};
+
+// Helper formato COP
+function fmtCOP(n){ return n.toLocaleString('es-CO',{style:'currency', currency:'COP', maximumFractionDigits:0}); }
+
+/* ==========================
+   ESTADO (mutará con inputs)
+========================== */
+let preciosUnitarios = {...PRECIOS_UNITARIOS_INICIALES};
+
+/* ==========================
+   UI: Inputs de precio
+========================== */
+function renderInputs(){
+  const cont = document.getElementById('inputs-precio');
+  let html = '<div class="row g-2">';
+  MOLECULAS.forEach((m,idx)=>{
+    html += `
+      <div class="col-12 col-md-3">
+        <label class="form-label mb-1">${m} <span class="badge text-bg-light">freq ${FRECUENCIAS[m]}</span></label>
+        <div class="input-group">
+          <span class="input-group-text">$</span>
+          <input class="form-control price-input" type="number" step="1000" min="0" id="precio_${idx}" value="${preciosUnitarios[m]}">
+        </div>
+      </div>`;
+  });
+  html += `</div>`;
+  cont.innerHTML = html;
+}
+
+// Lee inputs a estado
+function leerInputs(){
+  MOLECULAS.forEach((m,idx)=>{
+    const el = document.getElementById('precio_'+idx);
+    const v = Number(el.value || 0);
+    preciosUnitarios[m] = isNaN(v)?0:v;
+  });
+}
+
+/* ==========================
+   CÁLCULOS PRINCIPALES
+========================== */
+// Calcula precios por año (A1..A4) según reglas y frecuencias
+function calcularPreciosAnuales(){
+  // Resultado: { Molecula: {Precio_Año1..4} }
+  const out = {};
+  MOLECULAS.forEach(m=>{
+    const freq = FRECUENCIAS[m];
+    const baseA1 = preciosUnitarios[m] * freq;
+    const active = ANIOS_ACTIVOS[m] || 4;
+    out[m] = {
+      Precio_Año1: baseA1,
+      Precio_Año2: baseA1 * 2,
+      Precio_Año3: active>=3 ? baseA1 * 3 : 0,
+      Precio_Año4: active>=4 ? baseA1 * 4 : 0
+    };
+  });
+  return out;
+}
+
+// Suma costos adicionales por molécula y los reparte en años activos
+function costosAdicionalesPorAnio(){
+  // total por molecula
+  const sum = {};
+  COSTOS_DETALLADOS.forEach(row=>{
+    const mol = row[0], pu=row[3], cant=row[4];
+    if(!MOLECULAS.includes(mol)) return; // ignorar otros
+    sum[mol] = (sum[mol]||0) + pu*cant;
+  });
+  // distribuir igual por años activos
+  const out = {};
+  MOLECULAS.forEach(m=>{
+    const t = sum[m]||0;
+    const active = ANIOS_ACTIVOS[m]||4;
+    const porAnio = active>0 ? (t/active) : 0;
+    out[m] = {
+      Costo_Año1: porAnio,
+      Costo_Año2: active>=2 ? porAnio : 0,
+      Costo_Año3: active>=3 ? porAnio : 0,
+      Costo_Año4: active>=4 ? porAnio : 0
+    };
+  });
+  return out;
+}
+
+// Arma tabla precios + costos + totales
+function construirTablaModelo(){
+  const P = calcularPreciosAnuales();
+  const C = costosAdicionalesPorAnio();
+  // filas por molécula con totales y acumulados
+  const rows = MOLECULAS.map(m=>{
+    const r = {
+      Molecula: m,
+      Precio_Año1: P[m].Precio_Año1, Precio_Año2: P[m].Precio_Año2, Precio_Año3: P[m].Precio_Año3, Precio_Año4: P[m].Precio_Año4,
+      Costo_Año1: C[m].Costo_Año1, Costo_Año2: C[m].Costo_Año2, Costo_Año3: C[m].Costo_Año3, Costo_Año4: C[m].Costo_Año4
+    };
+    // Costo total por año y acumulados
+    for(let i=1;i<=4;i++){
+      r["Costo_Total_Año"+i] = r["Precio_Año"+i] + r["Costo_Año"+i];
+      r["Costo_Total_Acumulado_Año"+i] = Array.from({length:i},(_,k)=>r["Costo_Total_Año"+(k+1)]).reduce((a,b)=>a+b,0);
+    }
+    r["Precio_Acumulado"] = r.Precio_Año1 + r.Precio_Año2 + r.Precio_Año3 + r.Precio_Año4;
+    return r;
+  });
+  return rows;
+}
+
+/* ==========================
+   GRÁFICOS
+========================== */
+function plotPrecioAnual(rows){
+  // barras por año (panel izquierdo)
+  const years = ["1","2","3","4"];
+  const dataLeft = MOLECULAS.map((m,idx)=>{
+    const ys = years.map(y=> rows.find(r=>r.Molecula===m)["Precio_Año"+y]);
+    return {type:'bar', name:m, x:years, y:ys, marker:{color: coloresMerck[idx]}};
+  });
+  Plotly.newPlot('fig-precio-anual', dataLeft, {
+    title:"💵 Precio anual por molécula",
+    barmode:"group",
+    xaxis:{title:"Año"}, yaxis:{title:"COP"}
+  }, {displayModeBar:false, responsive:true});
+
+  // barras acumuladas por molécula (panel derecho)
+  const xMol = MOLECULAS;
+  const yAcc = xMol.map(m=> rows.find(r=>r.Molecula===m).Precio_Acumulado);
+  Plotly.newPlot('fig-precio-acumulado', [{
+    type:'bar', x:xMol, y:yAcc, marker:{color: coloresMerck}
+  }], {
+    title:"📊 Precio acumulado 4 años por molécula",
+    xaxis:{title:"Molécula"}, yaxis:{title:"COP"}
+  }, {displayModeBar:false, responsive:true});
+}
+
+function plotCostoTotalAnual(rows){
+  // melt costos totales
+  const years = ["1","2","3","4"];
+  const data = MOLECULAS.map((m,idx)=>{
+    const y = years.map(y=> rows.find(r=>r.Molecula===m)["Costo_Total_Año"+y]);
+    return {type:'bar', name:m, x:years, y:y, marker:{color: coloresMerck[idx]}};
+  });
+  Plotly.newPlot('fig-costo-total', data, {
+    title:"💰 Costo total anual por molécula (Precio + Costos adicionales)",
+    barmode:"group",
+    xaxis:{title:"Año"}, yaxis:{title:"COP"}
+  }, {displayModeBar:false, responsive:true});
+}
+
+function plotDesglose(rows){
+  // Para cada año, apilado Precio vs Costo adicional por molécula (facet manual: 4 subplots en 2x2)
+  const years = [1,2,3,4];
+  const specs = [[{type:'bar'},{type:'bar'}],[{type:'bar'},{type:'bar'}]];
+  const figData = [];
+  const subTitles = ["Año 1","Año 2","Año 3","Año 4"];
+  const layout = {
+    grid:{rows:2, columns:2, pattern:'independent'},
+    title:"🔍 Desglose por costos: Precio vs Costos adicionales por año y molécula",
+    showlegend:true
+  };
+  // Construir trazas por subplot
+  years.forEach((yr, i)=>{
+    const col = (i%2)+1;
+    const row = Math.floor(i/2)+1;
+    // Precio
+    figData.push({
+      type:'bar', name:`Precio (Año ${yr})`, x: MOLECULAS,
+      y: MOLECULAS.map(m=> rows.find(r=>r.Molecula===m)["Precio_Año"+yr]),
+      xaxis:'x'+(i+1), yaxis:'y'+(i+1), marker:{opacity:.9}
+    });
+    // Costo
+    figData.push({
+      type:'bar', name:`Costo add. (Año ${yr})`, x: MOLECULAS,
+      y: MOLECULAS.map(m=> rows.find(r=>r.Molecula===m)["Costo_Año"+yr]),
+      xaxis:'x'+(i+1), yaxis:'y'+(i+1), marker:{opacity:.7}
+    });
+    layout["xaxis"+(i+1)] = {title: subTitles[i]};
+    layout["yaxis"+(i+1)] = {title:"COP"};
+  });
+  Plotly.newPlot('fig-desglose', figData, layout, {displayModeBar:false, responsive:true});
+}
+
+function plotAcumulado(rows){
+  const years = ["1","2","3","4"];
+  const data = MOLECULAS.map((m,idx)=>{
+    const y = years.map(y=> rows.find(r=>r.Molecula===m)["Costo_Total_Acumulado_Año"+y]);
+    return {type:'scatter', mode:'lines+markers', name:m, x:years, y:y, marker:{color: coloresMerck[idx]}};
+  });
+  Plotly.newPlot('fig-acumulado', data, {
+    title:"📈 Costo total acumulado año a año por molécula",
+    xaxis:{title:"Año"}, yaxis:{title:"COP"}
+  }, {displayModeBar:false, responsive:true});
+}
+
+function plotAhorro(rows){
+  // base Cladribina
+  const base = rows.find(r=> r.Molecula==="Cladribina");
+  const years = [1,2,3,4];
+
+  // Burbujas
+  const tracesBubble = MOLECULAS.filter(m=>m!=="Cladribina").map((m,idx)=>{
+    const r = rows.find(x=>x.Molecula===m);
+    const ahorros = years.map(i=> r["Costo_Total_Acumulado_Año"+i] - base["Costo_Total_Acumulado_Año"+i]);
+    const sizes = ahorros.map(a=> Math.abs(a));
+    return {
+      type:'scatter', mode:'markers', name:m, x:years.map(String), y:ahorros,
+      marker:{size:sizes.map(s=> Math.sqrt(Math.abs(s))/100), opacity:.85, color: coloresMerck[idx]},
+      hovertemplate:`<b>${m}</b><br>Año %{x}<br>Diferencia: %{y:,.0f}<extra></extra>`
+    };
+  });
+  Plotly.newPlot('fig-ahorro-burbujas', tracesBubble, {
+    title:"🫧 Ahorro/sobrecosto acumulado vs Cladribina (burbujas)",
+    xaxis:{title:"Año"}, yaxis:{title:"COP (positivo = sobrecosto vs Cladribina)"}
+  }, {displayModeBar:false, responsive:true});
+
+  // Barras horizontales (acumulado Año 4 por molécula)
+  const comps = MOLECULAS.filter(m=>m!=="Cladribina");
+  const difs = comps.map(m=>{
+    const r = rows.find(x=>x.Molecula===m);
+    return r["Costo_Total_Acumulado_Año4"] - base["Costo_Total_Acumulado_Año4"];
+  });
+  Plotly.newPlot('fig-ahorro-barras', [{
+    type:'bar', orientation:'h', x:difs, y:comps, text:difs.map(v=>fmtCOP(v)), textposition:'auto', marker:{color: coloresMerck}
+  }], {
+    title:"💡 Ahorro/sobrecosto acumulado al Año 4 vs Cladribina (barras)",
+    xaxis:{title:"COP (positivo = sobrecosto vs Cladribina)"}, yaxis:{title:"Competidor"}
+  }, {displayModeBar:false, responsive:true});
+}
+
+/* ==========================
+   ANEXO: carga asistencial
+========================== */
+function promedioAnexo(){
+  const mols = Array.from(new Set([...Object.keys(KUWAIT),...Object.keys(BAHRAIN),...Object.keys(QATAR)]));
+  const rows = [];
+  mols.forEach(m=>{
+    const proms = {};
+    CATS.forEach(c=>{
+      const vals = [];
+      [KUWAIT,BAHRAIN,QATAR].forEach(country=>{
+        if(country[m] && (c in country[m])) vals.push(country[m][c]);
+      });
+      proms[c] = vals.length ? vals.reduce((a,b)=>a+b,0)/vals.length : null;
+    });
+    const total = CATS.reduce((a,c)=> a + (proms[c]||0), 0);
+    rows.push({Molecula:m, ...proms, Total: total});
+  });
+  // ordenar desc por total
+  rows.sort((a,b)=> b.Total - a.Total);
+  return rows;
+}
+function renderTablaAnexo(rows){
+  const tbl = document.getElementById('tabla-anexo');
+  let thead = `<thead><tr><th>Molécula</th>`;
+  CATS.forEach(c=> thead += `<th>${c}</th>`); thead += `<th>Total</th></tr></thead>`;
+  let tbody = `<tbody>`;
+  rows.forEach(r=>{
+    tbody += `<tr><td>${r.Molecula}</td>${CATS.map(c=>`<td>${(r[c]??0).toFixed(1)}</td>`).join("")}<td>${r.Total.toFixed(1)}</td></tr>`;
+  });
+  tbody += `</tbody>`;
+  tbl.innerHTML = thead + tbody;
+}
+function plotAnexo(rows){
+  const y = rows.map(r=> r.Molecula);
+  const figData = CATS.map((c,i)=>({
+    type:'bar', orientation:'h', name:c, y:y, x: rows.map(r=> r[c]??0)
+  }));
+  Plotly.newPlot('fig-anexo', figData, {
+    barmode:'stack',
+    title:"⏱️ Carga asistencial promedio (horas) por molécula y tipo de tiempo — Promedio Kuwait, Bahréin, Qatar",
+    xaxis:{title:"Horas (4 años)"}, yaxis:{title:"Molécula"}, height:500
+  }, {displayModeBar:false, responsive:true});
+}
+
+/* ==========================
+   COSTOS DETALLADOS: tabla + Excel
+========================== */
+function abrirCostosDesglosados(){
+  const modal = new bootstrap.Modal(document.getElementById('modalCostos'));
+  // Pintar tabla si no está
+  const tbl = document.getElementById('tabla-costos');
+  if(!tbl.dataset.rendered){
+    let thead = `<thead><tr>
+      <th>Molecula</th><th>Concepto</th><th>Código SOAT</th><th>Precio unitario</th><th>Cantidad</th>
+    </tr></thead>`;
+    let tbody = `<tbody>`;
+    COSTOS_DETALLADOS.forEach(r=>{
+      tbody += `<tr>
+        <td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td><td>${fmtCOP(r[3])}</td><td>${r[4]}</td>
+      </tr>`;
+    });
+    tbody += `</tbody>`;
+    tbl.innerHTML = thead + tbody;
+    tbl.dataset.rendered = "1";
+  }
+  modal.show();
+}
+
+function descargarExcel(){
+  // Sheet precios (calculado)
+  const rows = construirTablaModelo();
+  const preciosSheet = [
+    ["Molecula","Precio_Año1","Precio_Año2","Precio_Año3","Precio_Año4"]
+  ];
+  rows.forEach(r=>{
+    preciosSheet.push([r.Molecula, r.Precio_Año1, r.Precio_Año2, r.Precio_Año3, r.Precio_Año4]);
+  });
+
+  // Sheet costos detallados (tal cual listado)
+  const costosSheet = [["Molecula","Concepto","Código SOAT","Precio unitario","Cantidad"]];
+  COSTOS_DETALLADOS.forEach(r=> costosSheet.push(r));
+
+  const wb = XLSX.utils.book_new();
+  const ws1 = XLSX.utils.aoa_to_sheet(preciosSheet);
+  const ws2 = XLSX.utils.aoa_to_sheet(costosSheet);
+  XLSX.utils.book_append_sheet(wb, ws1, "precios");
+  XLSX.utils.book_append_sheet(wb, ws2, "costos_detallados");
+
+  XLSX.writeFile(wb, "prueba.xlsx");
+}
+
+/* ==========================
+   RE-RENDER
+========================== */
+function recalcularTodo(){
+  leerInputs();
+  const rows = construirTablaModelo();
+  plotPrecioAnual(rows);
+  plotCostoTotalAnual(rows);
+  plotDesglose(rows);
+  plotAcumulado(rows);
+  plotAhorro(rows);
+}
+
+/* ==========================
+   INIT
+========================== */
+renderInputs();
+recalcularTodo();
+
+// Anexo
+const anexoRows = promedioAnexo();
+renderTablaAnexo(anexoRows);
+plotAnexo(anexoRows);
+
+</script>
+</body>
+</html>
