@@ -1068,17 +1068,27 @@ function descargarExcel(){
 
 function descargarPDF(divId, nombreArchivo) {
   const element = document.getElementById(divId);
-  html2canvas(element).then(canvas => {
+
+  html2canvas(element, { scale: 2 }).then(canvas => {
     const imgData = canvas.toDataURL('image/png');
     const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF('l', 'pt', 'a4');
-    const imgProps = pdf.getImageProperties(imgData);
+    const pdf = new jsPDF('p', 'pt', 'a4'); // 'p' = vertical, cambia a 'l' si quieres horizontal
     const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
-    pdf.addImage(imgData, 'PNG', 10, 10, pdfWidth - 20, pdfHeight - 20);
+    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+    let position = 0;
+    const pageHeight = pdf.internal.pageSize.getHeight();
+
+    while (position < pdfHeight) {
+      pdf.addImage(imgData, 'PNG', 0, -position, pdfWidth, pdfHeight);
+      position += pageHeight;
+      if (position < pdfHeight) pdf.addPage();
+    }
+
     pdf.save(nombreArchivo + ".pdf");
   });
 }
+
 
 
 
@@ -1117,3 +1127,4 @@ recalcularTodo();
 </script>
 </body>
 </html>
+
