@@ -176,6 +176,7 @@
     </div>
     <div class="d-flex gap-2 mt-2">
       <button class="btn btn-success" onclick="recalcularTodo()">Actualizar gráficos</button>
+      <button class="btn btn-info" onclick="convertirADolares()">Convertir a Dólares</button>
       <span class="small-note">Frecuencias (anuales): 
         <span class="badge rounded-pill text-bg-light">Cladribina 12</span>
         <span class="badge rounded-pill text-bg-light">Dimetilfumarato 13</span>
@@ -789,7 +790,7 @@ function plotPrecioAnual(rows){
     title:"💵 Inversión Tto anual por molécula",
     barmode:"group",
     xaxis:{title:"Año Tto"},
-    yaxis:{title:"COP"}
+    yaxis:{title:"Costo"}
   }, {displayModeBar:false,responsive:true});
 
   // Barras acumuladas por molécula ordenadas de mayor a menor
@@ -1164,15 +1165,33 @@ function recalcularTodo() {
   renderResultadosAnuales();
 }
 
+function convertirADolares() {
+    const tasaCambio = 4433.11; // Define la tasa de cambio, por ejemplo, 1 USD = 4433.11 COP
+    
+    // Convertir precios unitarios
+    Object.keys(preciosUnitarios).forEach(m => {
+        preciosUnitarios[m] = (preciosUnitarios[m] / tasaCambio).toFixed(2);
+    });
 
+    // Convertir costos adicionales
+    COSTOS_DETALLADOS.forEach(r => {
+        r[3] = (r[3] / tasaCambio).toFixed(2); // Precio unitario
+    });
 
-  /* ==========================
+    // Volver a renderizar los inputs y gráficos
+    renderInputs();
+    renderInputsDosis();
+    recalcularTodo(); // Esto también actualizará los gráficos
+}
+
+/* ==========================
    INIT
 ========================== */
 renderInputs();
 renderInputsDosis();
 renderResultadosAnuales();
 recalcularTodo();
+
 
 </script>
 </body>
